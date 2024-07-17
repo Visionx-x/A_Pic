@@ -1,16 +1,21 @@
+#.this version have a ability to send pictures in dms
 import os
 import json
 import logging
-from vars import *
+import asyncio
+
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, ChatMemberUpdated, ChatJoinRequest
-import asyncio
-from pyrogram import filters
 from pyrogram.errors import FloodWait
-from pyrogram.types import Message
+
+from vars import B_TOKEN, API, API_HASH, BOT_USERNAME, DB_URI, ownerid
 from rishabh.users_db import get_served_users, add_served_user
-from sys import exit
 from async_mongo import AsyncClient
+
+# Constants
+LOGO_URL = "https://graph.org/file/98a15d8ecbd89eb30f7aa.jpg"
+USER_DATA_FILE = "user_data.json"
+GROUP_DATA_FILE = "group_data.json"
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -24,24 +29,18 @@ thanos = Client(
     api_hash=API_HASH
 )
 
-# File paths for storing data
-USER_DATA_FILE = "user_data.json"
-GROUP_DATA_FILE = "group_data.json"
-
-
-
-
-
-
+# Connect to MongoDB
 try:
     mongo = AsyncClient(DB_URI)
     db = mongo["Assistant"]
     logger.info("Connected to your Mongo Database.")
 except Exception as e:
-    logger.error(f"Failed to connect to your Mongo Database.\ {e}")
+    logger.error(f"Failed to connect to your Mongo Database: {e}")
     exit(1)
 
 usersdb = db["users"]
+
+# Helper functions
 def load_data(file_path):
     if os.path.exists(file_path):
         with open(file_path, "r") as file:
@@ -60,22 +59,35 @@ def add_to_data(data_list, new_entry, file_path):
         data_list.append(new_entry)
         save_data(data_list, file_path)
 
+# Handlers
 @thanos.on_message(filters.private & filters.command(["start"]))
-async def start(client: thanos, message: Message):
+async def start(client: Client, message: Message):
     try:
         await add_served_user(message.from_user.id)
+        logger.info(f"Added user {message.from_user.id} to the database.")
+
         button = [
-            [
-                InlineKeyboardButton("ᴀᴅᴅ ᴍᴇ", url=f"https://t.me/{BOT_USERNAME}?startgroup=true")
-            ]
+            [InlineKeyboardButton("ᴀᴅᴅ ᴍᴇ", url=f"https://t.me/{BOT_USERNAME}?startgroup=true")]
         ]
-        await message.reply_text(
-            text="**HELLO...⚡\n\ni am an advanced telegram auto request accept bot.**",
-            reply_markup=InlineKeyboardMarkup(button),
-            disable_web_page_preview=True
+
+        # Test if the bot can send a simple text message
+        # await client.send_message(
+        #    chat_id=message.chat.id,
+        #    text="Bot is working! This is a test message."
+        # )
+
+        # Uncomment this part after confirming the bot can send messages
+        await client.send_photo(
+            chat_id=message.chat.id,
+            photo=LOGO_URL,
+            caption="**HELLO...⚡\n\ni am an advanced telegram auto request accept bot.**",
+            reply_markup=InlineKeyboardMarkup(button)
         )
+
+        logger.info(f"Sent start message to user {message.from_user.id}.")
     except Exception as e:
         logger.error(f"Error in start handler: {e}")
+        await message.reply_text(f"An error occurred: {e}")
 
 @thanos.on_chat_member_updated(filters.group)
 async def welcome_goodbye(client: thanos, message: ChatMemberUpdated):
@@ -102,7 +114,6 @@ async def welcome_goodbye(client: thanos, message: ChatMemberUpdated):
                     text=f"Goodbye {user.mention}, we will miss you in {chat.title}!"
                 )
 
-                # Send a personal goodbye message to the user
                 personal_goodbye_message = (
                     "⚠️ Sorry for the inconvenience caused\n"
                     "🚨 You Can Request any Anime here\n"
@@ -110,9 +121,10 @@ async def welcome_goodbye(client: thanos, message: ChatMemberUpdated):
                     "🛎️ Koi bhi Help ke liye msg here ☝️"
                 )
 
-                await client.send_message(
+                await client.send_photo(
                     chat_id=user.id,
-                    text=personal_goodbye_message
+                    photo=LOGO_URL,
+                    caption=personal_goodbye_message
                 )
     except Exception as e:
         logger.error(f"Error in welcome_goodbye handler: {e}")
@@ -123,39 +135,25 @@ async def autoapprove(client: thanos, message: ChatJoinRequest):
         await client.approve_chat_join_request(chat_id=message.chat.id, user_id=message.from_user.id)
         logger.info(f"Approved join request for {message.from_user.first_name} in {message.chat.title}")
 
-        # Send a welcome message to the group or channel
-        #await client.send_message(
-          #  chat_id=message.chat.id,
-          #  text=f"Hello {message.from_user.mention}, welcome to {message.chat.title}!"
-     #   )
-
-        # Send a personal welcome message to the user
         personal_message = (
-            f"👋 𝗛𝗲𝗹𝗹𝗼 {message.from_user.mention}, Welcome to 𝗔𝗻𝗶𝗺𝗲𝗔𝗿𝗶𝘀𝗲\n\n"
-            "🔰 𝗪𝗵𝗮𝘁 𝘆𝗼𝘂 𝘄𝗶𝗹𝗹 𝗴𝗲𝘁 𝗯𝘆 𝗝𝗼𝗶𝗻𝗶𝗻𝗴 𝗔𝗻𝗶𝗺𝗲𝗔𝗿𝗶𝘀𝗲?\n"
-            "1⃣ All your favourite anime in different audio like English Hindi Tamil etc\n"
-            "2⃣ Anime with a Complete Season or Ongoing Episode\n"
-            "3⃣ Watch Now and Download link of all the anime\n\n"
-            "✊ 𝗕𝗲𝗰𝗼𝗺𝗲 𝗮 𝗺𝗲𝗺𝗯𝗲𝗿 𝗼𝗳 𝗼𝘂𝗿 𝗔𝗻𝗶𝗺𝗲𝗔𝗿𝗶𝘀𝗲 𝗖𝗼𝗺𝗺𝘂𝗻𝗶𝘁𝘆\n"
-            "1⃣ Request any anime which you want to watch.\n"
-            "2⃣ If the anime is available our Bot will provide you the link.\n"
-            "3⃣ Chat with Other Anime Lovers.\n\n"
-            "🔰 Anime online dekhe Hindi English Tamil etc languages me\n\n"
-            "♥️ Our Community Joining Link 👇\n"
-            "https://t.me/AnimeArise\n"
-            "https://t.me/AnimeArise\n"
-            "https://t.me/AnimeArise\n\n"
-            "🔰 𝗦𝗲𝗻𝗱 /start 𝘁𝗼 𝗸𝗻𝗼𝘄 𝗺𝗼𝗿𝗲 𝗮𝗯𝗼𝘂𝘁 𝘁𝗵𝗶𝘀 𝗯𝗼𝘁."
+            f"💋𝙅𝙤𝙞𝙣 𝙁𝙤𝙧 𝙇𝙖𝙩𝙚𝙨𝙩 𝘾𝙤𝙡𝙡𝙚𝙘𝙩𝙞𝙤𝙣💋\n\n"
+            "• https://discord.com/invite/5ACnAvC2et\n"
+            "• https://discord.com/invite/5ACnAvC2et\n"
+            "• https://discord.com/invite/5ACnAvC2et\n"
+            "• https://discord.com/invite/5ACnAvC2et\n\n"
+            "🎬Click Here to learn how to login in Discord\n\n"
+            "@HowToUse_Discord\n"
+            "@HowToUse_Discord\n\n"
+            "🎬डिस्कॉर्ड में लॉगइन करने का तरीका जानने के लिए यहां क्लिक करें"
         )
 
-        await client.send_message(
+        await client.send_photo(
             chat_id=message.from_user.id,
-            text=personal_message
+            photo=LOGO_URL,
+            caption=personal_message
         )
     except Exception as e:
         logger.error(f"Error in autoapprove handler: {e}")
-
-
 
 @thanos.on_message(filters.command("stats") & filters.user(ownerid))
 async def stats(client: thanos, message: Message):
@@ -163,7 +161,6 @@ async def stats(client: thanos, message: Message):
     await message.reply_text(
         f"<u><b>ᴄᴜʀʀᴇɴᴛ sᴛᴀᴛs ᴏғ {client.me.mention} :</b></u>\n\n➻ <b>ᴜsᴇʀs :</b> {users}\n"
     )
-
 
 @thanos.on_message(filters.command("broadcast") & filters.user(ownerid))
 async def broadcast(cli: thanos, message: Message):
@@ -176,6 +173,7 @@ async def broadcast(cli: thanos, message: Message):
                 "<b>ᴇxᴀᴍᴘʟᴇ </b>:\n/broadcast [ᴍᴇssᴀɢᴇ] ᴏʀ [ʀᴇᴘʟʏ ᴛᴏ ᴀ ᴍᴇssᴀɢᴇ]"
             )
         query = message.text.split(None, 1)[1]
+
     susr = 0
     served_users = []
     susers = await get_served_users()
@@ -205,4 +203,4 @@ async def broadcast(cli: thanos, message: Message):
 
 if __name__ == "__main__":
     thanos.run()
-    
+                  
