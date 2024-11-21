@@ -77,9 +77,9 @@ async def start(client: Client, message: Message):
         # )
 
         # Uncomment this part after confirming the bot can send messages
-        await client.send_photo(
+        await client.send_video(
             chat_id=message.chat.id,
-            photo=LOGO_URL,
+            video=LOGO_URL,
             caption="**HELLO...⚡\n\ni am an advanced telegram auto request accept bot.**",
             reply_markup=InlineKeyboardMarkup(button)
         )
