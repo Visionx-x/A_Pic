@@ -13,7 +13,7 @@ from rishabh.users_db import get_served_users, add_served_user
 from async_mongo import AsyncClient
 
 # Constants
-LOGO_URL = "https://envs.sh/51x.mp4"
+LOGO_URL = "https://envs.sh/GiE.mp4"
 USER_DATA_FILE = "user_data.json"
 GROUP_DATA_FILE = "group_data.json"
 
